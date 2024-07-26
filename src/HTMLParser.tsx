@@ -104,17 +104,8 @@ const HTMLParser: React.FC = () => {
 
       return (
         <div key={index} id={`p-${item.content}`} className="parsed-item">
-          <p className={`${indentClass} parsed-paragraph`} data-title={item.content}>
-            {paragraphHierarchy && (
-              <span className="paragraph-hierarchy">
-                <span className="paren">({paragraphHierarchy[1]})</span> {/* Render paragraph hierarchy */}
-              </span>
-            )}
-            {paragraphHeading && (
-              <em className="paragraph-heading">{paragraphHeading[1]}</em>
-            )}
-            {item.content} {/* Render the content */}
-          </p>
+          <div className={`${indentClass} parsed-paragraph`} data-title={item.content} dangerouslySetInnerHTML={{ __html: item.content }}>
+          </div>
           {renderParsedContent(item.children)}
         </div>
       );
