@@ -25,6 +25,7 @@ const HTMLParser = () => {
   const parseHtmlContent = () => {
     const $ = cheerio.load(inputHtml);
     const parsed = parseElement($('body'), 0);
+
     setParsedItems(parsed);
   };
 
