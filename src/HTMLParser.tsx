@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import DOMPurify from 'dompurify';
 
 // Define the structure of a parsed item
 interface ParsedItem {
@@ -20,7 +21,8 @@ const HTMLParser: React.FC = () => {
       setLoading(true); // Indicate loading state
       setError(null); // Clear any previous errors
       const response = await axios.get(url); // Fetch HTML content from the provided URL
-      setInputHtml(response.data); // Set the fetched HTML content to state
+      const sanitizedHtml = DOMPurify.sanitize(response.data); // Sanitize the fetched HTML content
+      setInputHtml(sanitizedHtml); // Set the sanitized HTML content to state
     } catch (error) {
       console.error('Error fetching HTML:', error); // Log the error for debugging
       setError('Failed to fetch HTML content. Please check the URL and try again.'); // Set user-friendly error message
@@ -102,7 +104,7 @@ const HTMLParser: React.FC = () => {
           Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
         </button>
         <button onClick={parseHtmlContent}>
-          Parse It! {/* Button to parse and render HTML content */}
+          Go {/* Button to parse and render HTML content */}
         </button>
       </div>
       <div>
