@@ -133,23 +133,23 @@ const HTMLParser: React.FC = () => {
         </button>
       </div>
       {error && <p className="error">{error}</p>} {/* Display error message if any */}
-      <div>
-        <textarea
-          value={inputHtml}
-          onChange={(e) => setInputHtml(e.target.value)} // Update HTML content state on input change
-          placeholder="Or paste HTML here"
-        />
-      </div>
-      <div>
-        <button onClick={() => copyToClipboard(inputHtml)}>
-          Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
-        </button>
-        <button onClick={parseHtmlContent}>
-          Parse It {/* Button to parse and render HTML content */}
-        </button>
-      </div>
-      <div>
-        {renderParsedContent(parsedItems)} {/* Render the parsed content */}
+      <div className="container">
+        <div className="input-section">
+          <textarea
+            value={inputHtml}
+            onChange={(e) => setInputHtml(e.target.value)} // Update HTML content state on input change
+            placeholder="Or paste HTML here"
+          />
+          <button onClick={() => copyToClipboard(inputHtml)}>
+            Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
+          </button>
+          <button onClick={parseHtmlContent}>
+            Parse It {/* Button to parse and render HTML content */}
+          </button>
+        </div>
+        <div className="output-section">
+          {renderParsedContent(parsedItems)} {/* Render the parsed content */}
+        </div>
       </div>
     </div>
   );
