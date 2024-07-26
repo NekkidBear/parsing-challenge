@@ -1,102 +1,64 @@
-import React, { useState, useEffect } from 'react';
-import * as cheerio from 'cheerio';
+import React, { useState } from 'react';
 import axios from 'axios';
-import './App.css';
 
+// Define the structure of a parsed item
 interface ParsedItem {
-  level: number;
   content: string;
   children: ParsedItem[];
 }
 
-const HtmlParser: React.FunctionComponent = () => {
-  const [inputHtml, setInputHtml] = useState<string>('');
-  const [parsedContent, setParsedContent] = useState<ParsedItem[]>([]);
-  const [url, setUrl] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+const HTMLParser: React.FC = () => {
+  const [url, setUrl] = useState(''); // State to hold the URL input by the user
+  const [inputHtml, setInputHtml] = useState(''); // State to hold the fetched HTML content
+  const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]); // State to hold the parsed items
+  const [loading, setLoading] = useState(false); // State to indicate loading status
+  const [error, setError] = useState<string | null>(null); // State to hold any error messages
 
-  const parseHtml = (html: string): ParsedItem[] => {
-    const $ = cheerio.load(html);
-    const items: ParsedItem[] = [];
-
-    const processNode = (element: cheerio.Element, level: number): ParsedItem => {
-      const $element = $(element);
-      const item: ParsedItem = {
-        level,
-        content: $element.clone().children().remove().end().text().trim(),
-        children: [],
-      };
-
-      $element.children().each((_, child) => {
-        if (['p', 'div', 'span', 'h1'].includes(child.tagName.toLowerCase())) {
-          item.children.push(processNode(child, level + 1));
-        }
-      });
-
-      return item;
-    };
-
-    $('body').children().each((_, element) => {
-      if (['p', 'div', 'span', 'h1'].includes(element.tagName.toLowerCase())) {
-        items.push(processNode(element, 0));
-      }
-    });
-
-    return items;
-  };
-
-  useEffect(() => {
-    if (inputHtml) {
-      setLoading(true);
-      const parsed = parseHtml(inputHtml);
-      setParsedContent(parsed);
-      setLoading(false);
-    }
-  }, [inputHtml]);
-
+  // Function to fetch HTML content from the provided URL
   const fetchHtmlFromUrl = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Indicate loading state
       setError(null); // Clear any previous errors
-      const response = await axios.get(url);
-      setInputHtml(response.data);
+      const response = await axios.get(url); // Fetch HTML content from the provided URL
+      setInputHtml(response.data); // Set the fetched HTML content to state
     } catch (error) {
-      console.error('Error fetching HTML:', error);
-      setError('Failed to fetch HTML content. Please check the URL and try again.');
+      console.error('Error fetching HTML:', error); // Log the error for debugging
+      setError('Failed to fetch HTML content. Please check the URL and try again.'); // Set user-friendly error message
     } finally {
-      setLoading(false);
+      setLoading(false); // Reset loading state
     }
   };
 
+  // Function to copy text to clipboard
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      alert('Copied to clipboard!');
+      alert('Copied to clipboard!'); // Notify user of successful copy
     }, (err) => {
-      console.error('Could not copy text: ', err);
+      console.error('Could not copy text: ', err); // Log the error if copy fails
     });
   };
 
+  // Function to recursively render parsed content
   const renderParsedContent = (items: ParsedItem[], level: number = 0): JSX.Element[] => {
     return items.map((item, index) => {
-      const indentClass = `indent-${level}`;
-      const paragraphHierarchy = item.content.match(/^\((\w+)\)/);
-      const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/);
+      const indentClass = `indent-${level}`; // Class for indentation based on hierarchy level
+      const paragraphHierarchy = item.content.match(/^\((\w+)\)/); // Match paragraph hierarchy pattern
+      const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/); // Match paragraph heading pattern
 
       return (
         <div key={index} id={`p-${item.content}`} className="parsed-item">
           <p className={`${indentClass} parsed-paragraph`} data-title={item.content}>
             {paragraphHierarchy && (
               <span className="paragraph-hierarchy">
-                <span className="paren">({paragraphHierarchy[1]})</span>
+                <span className="paren">({paragraphHierarchy[1]})</span> {/* Render paragraph hierarchy */}
               </span>
             )}
             {paragraphHeading && (
               <em className="paragraph-heading">{paragraphHeading[1]}</em>
-            )}
-            {item.content}
+            )} {/* Render paragraph heading */}
+            {item.content} {/* Render the content */}
           </p>
-          {renderParsedContent(item.children, level + 1)}
+          {renderParsedContent(item.children, level + 1)} {/* Recursively render child items */}
         </div>
       );
     });
@@ -108,21 +70,31 @@ const HtmlParser: React.FunctionComponent = () => {
         <input
           type="text"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Enter URL here"
+          onChange={(e) => setUrl(e.target.value)} // Update URL state on input change
+          placeholder="Enter URL"
         />
-        <button onClick={fetchHtmlFromUrl}>Fetch and Parse</button>
+        <button onClick={fetchHtmlFromUrl} disabled={loading}>
+          {loading ? 'Loading...' : 'Fetch HTML'} {/* Button to fetch HTML content */}
+        </button>
       </div>
-      <textarea
-        value={inputHtml}
-        onChange={(e) => setInputHtml(e.target.value)}
-        placeholder="Enter HTML here"
-      />
-      <button onClick={() => copyToClipboard(inputHtml)}>Copy HTML</button>
-      {loading ? <div className="spinner"></div> : <div>{renderParsedContent(parsedContent)}</div>}
-      {error && <div className="error-message">{error}</div>}
+      {error && <p className="error">{error}</p>} {/* Display error message if any */}
+      <div>
+        <textarea
+          value={inputHtml}
+          onChange={(e) => setInputHtml(e.target.value)} // Update HTML content state on input change
+          placeholder="Or paste HTML here"
+        />
+      </div>
+      <div>
+        <button onClick={() => copyToClipboard(inputHtml)}>
+          Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
+        </button>
+      </div>
+      <div>
+        {renderParsedContent(parsedItems)} {/* Render the parsed content */}
+      </div>
     </div>
   );
 };
 
-export default HtmlParser;
+export default HTMLParser;
