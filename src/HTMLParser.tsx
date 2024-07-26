@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
+import './App.css';
 
 interface ParsedItem {
   level: number;
@@ -12,13 +13,13 @@ const HtmlParser: React.FunctionComponent = () => {
   const [inputHtml, setInputHtml] = useState<string>('');
   const [parsedContent, setParsedContent] = useState<ParsedItem[]>([]);
   const [url, setUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Function to parse HTML string into a structured format
   const parseHtml = (html: string): ParsedItem[] => {
     const $ = cheerio.load(html);
     const items: ParsedItem[] = [];
 
-    // Recursive function to process each node and its children
     const processNode = (element: cheerio.Element, level: number): ParsedItem => {
       const $element = $(element);
       const item: ParsedItem = {
@@ -27,9 +28,8 @@ const HtmlParser: React.FunctionComponent = () => {
         children: [],
       };
 
-      // Process children nodes if they are 'p', 'div', or 'span'
       $element.children().each((_, child) => {
-        if (['p', 'div', 'span'].includes(child.tagName.toLowerCase())) {
+        if (['p', 'div', 'span', 'h1'].includes(child.tagName.toLowerCase())) {
           item.children.push(processNode(child, level + 1));
         }
       });
@@ -37,9 +37,8 @@ const HtmlParser: React.FunctionComponent = () => {
       return item;
     };
 
-    // Process top-level nodes in the body
     $('body').children().each((_, element) => {
-      if (['p', 'div', 'span'].includes(element.tagName.toLowerCase())) {
+      if (['p', 'div', 'span', 'h1'].includes(element.tagName.toLowerCase())) {
         items.push(processNode(element, 0));
       }
     });
@@ -47,43 +46,60 @@ const HtmlParser: React.FunctionComponent = () => {
     return items;
   };
 
-  // Effect to re-parse HTML whenever inputHtml changes
   useEffect(() => {
     if (inputHtml) {
+      setLoading(true);
       const parsed = parseHtml(inputHtml);
       setParsedContent(parsed);
+      setLoading(false);
     }
   }, [inputHtml]);
 
-  // Function to fetch HTML content from a given URL
   const fetchHtmlFromUrl = async () => {
     try {
+      setLoading(true);
+      setError(null); // Clear any previous errors
       const response = await axios.get(url);
       setInputHtml(response.data);
     } catch (error) {
       console.error('Error fetching HTML:', error);
-      // Troubleshooting: Check if the URL is correct and the server is responding
+      setError('Failed to fetch HTML content. Please check the URL and try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Function to copy text to clipboard
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       alert('Copied to clipboard!');
     }, (err) => {
       console.error('Could not copy text: ', err);
-      // Troubleshooting: Ensure the browser supports clipboard API and permissions are granted
     });
   };
 
-  // Function to render parsed content recursively
   const renderParsedContent = (items: ParsedItem[], level: number = 0): JSX.Element[] => {
-    return items.map((item, index) => (
-      <div key={index} style={{ marginLeft: level * 20 }}>
-        <p>{item.content}</p>
-        {renderParsedContent(item.children, level + 1)}
-      </div>
-    ));
+    return items.map((item, index) => {
+      const indentClass = `indent-${level}`;
+      const paragraphHierarchy = item.content.match(/^\((\w+)\)/);
+      const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/);
+
+      return (
+        <div key={index} id={`p-${item.content}`} className="parsed-item">
+          <p className={`${indentClass} parsed-paragraph`} data-title={item.content}>
+            {paragraphHierarchy && (
+              <span className="paragraph-hierarchy">
+                <span className="paren">({paragraphHierarchy[1]})</span>
+              </span>
+            )}
+            {paragraphHeading && (
+              <em className="paragraph-heading">{paragraphHeading[1]}</em>
+            )}
+            {item.content}
+          </p>
+          {renderParsedContent(item.children, level + 1)}
+        </div>
+      );
+    });
   };
 
   return (
@@ -103,7 +119,8 @@ const HtmlParser: React.FunctionComponent = () => {
         placeholder="Enter HTML here"
       />
       <button onClick={() => copyToClipboard(inputHtml)}>Copy HTML</button>
-      <div>{renderParsedContent(parsedContent)}</div>
+      {loading ? <div className="spinner"></div> : <div>{renderParsedContent(parsedContent)}</div>}
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };
