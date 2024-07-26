@@ -96,21 +96,28 @@ const HTMLParser: React.FC = () => {
   };
 
   // Function to recursively render parsed content
-  const renderParsedContent = (items: ParsedItem[]): JSX.Element[] => {
-    return items.map((item, index) => {
-      const indentClass = `indent-${item.indentLevel}`; // Class for indentation based on hierarchy level
-      const paragraphHierarchy = item.content.match(/^\((\w+)\)/); // Match paragraph hierarchy pattern
-      const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/); // Match paragraph heading pattern
-
-      return (
-        <div key={index} id={`p-${item.content}`} className="parsed-item">
-          <div className={`${indentClass} parsed-paragraph`} data-title={item.content} dangerouslySetInnerHTML={{ __html: item.content }}>
+    const renderParsedContent = (items: ParsedItem[]): JSX.Element[] => {
+      return items.map((item, index) => {
+        const indentClass = `indent-${item.indentLevel}`; // Class for indentation based on hierarchy level
+        const paragraphHierarchy = item.content.match(/^\((\w+)\)/); // Match paragraph hierarchy pattern
+        const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/); // Match paragraph heading pattern
+  
+        return (
+          <div key={index} id={`p-${item.content}`} className="parsed-item">
+            <div className={`${indentClass} parsed-paragraph`} data-title={item.content}>
+              {paragraphHierarchy && (
+                <span className="paragraph-hierarchy">{paragraphHierarchy[1]}</span>
+              )}
+              {paragraphHeading && (
+                <span className="paragraph-heading">{paragraphHeading[1]}</span>
+              )}
+              <span dangerouslySetInnerHTML={{ __html: item.content }} />
+            </div>
+            {renderParsedContent(item.children)}
           </div>
-          {renderParsedContent(item.children)}
-        </div>
-      );
-    });
-  };
+        );
+      });
+    };
 
   return (
     <div>
@@ -138,7 +145,7 @@ const HTMLParser: React.FC = () => {
           Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
         </button>
         <button onClick={parseHtmlContent}>
-          Go {/* Button to parse and render HTML content */}
+          Parse It {/* Button to parse and render HTML content */}
         </button>
       </div>
       <div>
