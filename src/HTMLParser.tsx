@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import DOMPurify from 'dompurify';
 
+// Define the structure of a parsed item
+interface ParsedItem {
+  content: string;
+  children: ParsedItem[];
+  indentLevel: number;
+}
+
 const HTMLParser: React.FC = () => {
   const [url, setUrl] = useState(''); // State to hold the URL input by the user
-  const [inputHtml, setInputHtml] = useState(''); // State to hold the fetched or pasted HTML content
-  const [sanitizedHtml, setSanitizedHtml] = useState(''); // State to hold the sanitized HTML content
+  const [inputHtml, setInputHtml] = useState(''); // State to hold the fetched HTML content
+  const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]); // State to hold the parsed items
   const [loading, setLoading] = useState(false); // State to indicate loading status
   const [error, setError] = useState<string | null>(null); // State to hold any error messages
 
@@ -16,8 +23,7 @@ const HTMLParser: React.FC = () => {
       setError(null); // Clear any previous errors
       const response = await axios.get(url); // Fetch HTML content from the provided URL
       const sanitizedHtml = DOMPurify.sanitize(response.data); // Sanitize the fetched HTML content
-      setInputHtml(response.data); // Set the fetched HTML content to state
-      setSanitizedHtml(sanitizedHtml); // Set the sanitized HTML content to state
+      setInputHtml(sanitizedHtml); // Set the sanitized HTML content to state
     } catch (error) {
       console.error('Error fetching HTML:', error); // Log the error for debugging
       setError('Failed to fetch HTML content. Please check the URL and try again.'); // Set user-friendly error message
@@ -35,10 +41,84 @@ const HTMLParser: React.FC = () => {
     });
   };
 
-  // Function to handle pasted HTML content
-  const handlePastedHtml = (html: string) => {
-    const sanitizedHtml = DOMPurify.sanitize(html); // Sanitize the pasted HTML content
-    setSanitizedHtml(sanitizedHtml); // Set the sanitized HTML content to state
+  // Function to parse HTML content and update parsedItems state
+  const parseHtmlContent = () => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(inputHtml, 'text/html');
+    const parsed = parseElement(doc.body, 0);
+    setParsedItems(parsed);
+  };
+
+  // Function to recursively parse HTML elements
+  const parseElement = (element: HTMLElement, indentLevel: number): ParsedItem[] => {
+    let items: ParsedItem[] = [];
+    let stack: number[] = [indentLevel];
+
+    element.childNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const tagName = el.tagName.toLowerCase();
+        let content = el.outerHTML;
+        let newIndentLevel = indentLevel;
+
+        if (tagName === 'p' || tagName === 'div') {
+          const bulletMatch = content.match(/^\((\w+)\)/);
+          if (bulletMatch) {
+            const bullet = bulletMatch[1];
+            if (bullet.match(/^\d+$/)) {
+              newIndentLevel = stack[stack.length - 1] + 1;
+              stack.push(newIndentLevel);
+            } else if (bullet.match(/^[a-z]$/)) {
+              newIndentLevel = stack[stack.length - 1] + 1;
+              stack.push(newIndentLevel);
+            } else if (bullet.match(/^[A-Z]$/)) {
+              newIndentLevel = stack[stack.length - 1] + 1;
+              stack.push(newIndentLevel);
+            } else if (bullet.match(/^\d+\.$/)) {
+              newIndentLevel = stack.pop() || indentLevel;
+            }
+          }
+        }
+
+        let children: ParsedItem[] = [];
+        if (el.children.length > 0) {
+          children = parseElement(el, newIndentLevel);
+        }
+        items.push({ content, children, indentLevel: newIndentLevel });
+      } else if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.nodeValue?.trim();
+        if (text) {
+          items.push({ content: text, children: [], indentLevel });
+        }
+      }
+    });
+    return items;
+  };
+
+  // Function to recursively render parsed content
+  const renderParsedContent = (items: ParsedItem[]): JSX.Element[] => {
+    return items.map((item, index) => {
+      const indentClass = `indent-${item.indentLevel}`; // Class for indentation based on hierarchy level
+      const paragraphHierarchy = item.content.match(/^\((\w+)\)/); // Match paragraph hierarchy pattern
+      const paragraphHeading = item.content.match(/<em>(.*?)<\/em>/); // Match paragraph heading pattern
+
+      return (
+        <div key={index} id={`p-${item.content}`} className="parsed-item">
+          <p className={`${indentClass} parsed-paragraph`} data-title={item.content}>
+            {paragraphHierarchy && (
+              <span className="paragraph-hierarchy">
+                <span className="paren">({paragraphHierarchy[1]})</span> {/* Render paragraph hierarchy */}
+              </span>
+            )}
+            {paragraphHeading && (
+              <em className="paragraph-heading">{paragraphHeading[1]}</em>
+            )}
+            {item.content} {/* Render the content */}
+          </p>
+          {renderParsedContent(item.children)}
+        </div>
+      );
+    });
   };
 
   return (
@@ -58,10 +138,7 @@ const HTMLParser: React.FC = () => {
       <div>
         <textarea
           value={inputHtml}
-          onChange={(e) => {
-            setInputHtml(e.target.value);
-            handlePastedHtml(e.target.value);
-          }} // Update HTML content state on input change
+          onChange={(e) => setInputHtml(e.target.value)} // Update HTML content state on input change
           placeholder="Or paste HTML here"
         />
       </div>
@@ -69,8 +146,13 @@ const HTMLParser: React.FC = () => {
         <button onClick={() => copyToClipboard(inputHtml)}>
           Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
         </button>
+        <button onClick={parseHtmlContent}>
+          Go {/* Button to parse and render HTML content */}
+        </button>
       </div>
-      <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} /> {/* Render the sanitized HTML content */}
+      <div>
+        {renderParsedContent(parsedItems)} {/* Render the parsed content */}
+      </div>
     </div>
   );
 };
