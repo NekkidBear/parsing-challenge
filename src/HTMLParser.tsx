@@ -38,6 +38,18 @@ const HTMLParser: React.FC = () => {
     });
   };
 
+  // Function to parse HTML content and update parsedItems state
+  const parseHtmlContent = () => {
+    // Example parsing logic (you need to implement your own parsing logic)
+    const parsed = [
+      {
+        content: inputHtml,
+        children: []
+      }
+    ];
+    setParsedItems(parsed);
+  };
+
   // Function to recursively render parsed content
   const renderParsedContent = (items: ParsedItem[], level: number = 0): JSX.Element[] => {
     return items.map((item, index) => {
@@ -55,10 +67,10 @@ const HTMLParser: React.FC = () => {
             )}
             {paragraphHeading && (
               <em className="paragraph-heading">{paragraphHeading[1]}</em>
-            )} {/* Render paragraph heading */}
+            )}
             {item.content} {/* Render the content */}
           </p>
-          {renderParsedContent(item.children, level + 1)} {/* Recursively render child items */}
+          {renderParsedContent(item.children, level + 1)}
         </div>
       );
     });
@@ -88,6 +100,9 @@ const HTMLParser: React.FC = () => {
       <div>
         <button onClick={() => copyToClipboard(inputHtml)}>
           Copy HTML to Clipboard {/* Button to copy HTML content to clipboard */}
+        </button>
+        <button onClick={parseHtmlContent}>
+          Parse It! {/* Button to parse and render HTML content */}
         </button>
       </div>
       <div>
