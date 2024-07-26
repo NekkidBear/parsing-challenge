@@ -23,24 +23,25 @@ const HTMLParser = () => {
 
   // Function to parse HTML content and update parsedItems state
   const parseHtmlContent = () => {
-    const $ = cheerio.load(inputHtml);
-    const parsed = parseElement($('body'), 0);
+    const $ = cheerio.load(inputHtml); // Load the HTML content using Cheerio
+    const parsed = parseElement($('body'), 0); // Start parsing from the body element with indent level 0
 
-    setParsedItems(parsed);
+    setParsedItems(parsed); // Update the state with parsed items
   };
 
   // Function to recursively parse HTML elements
   const parseElement = (element: cheerio.Cheerio, indentLevel: number): ParsedItem[] => {
     let items: ParsedItem[] = [];
-    let stack: number[] = [indentLevel];
+    let stack: number[] = [indentLevel]; // Stack to manage indent levels
 
     element.contents().each((index, node) => {
-      if (node.type === 'tag') {
+      if (node.type === 'tag') { // Check if the node is an HTML tag
         const el = cheerio(node);
-        const tagName = node.name.toLowerCase(); // Use node.name instead of el[0].tagName
-        let content = el.html() || '';
+        const tagName = node.name.toLowerCase(); // Get the tag name in lowercase
+        let content = el.html() || ''; // Get the inner HTML content
         let newIndentLevel = indentLevel;
 
+        // Handle specific tags and adjust indent levels based on bullet points
         if (tagName === 'p' || tagName === 'div') {
           const bulletMatch = content.match(/^\((\w+)\)/);
           if (bulletMatch) {
@@ -60,11 +61,13 @@ const HTMLParser = () => {
           }
         }
 
+        // Recursively parse child elements
         let children: ParsedItem[] = [];
         if (el.children().length > 0) {
           children = parseElement(el, newIndentLevel);
         }
 
+        // Add the parsed item to the list
         items.push({
           tagName,
           content,
